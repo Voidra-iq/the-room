@@ -20,7 +20,13 @@ public partial class HumanoidAnimationSet : Resource
     /// standing stance in the Mixamo "Stabbing" clip, rather than a T-pose.</summary>
     [Export] public AnimationLibrary? Idle;
     [Export] public AnimationLibrary? Run;
+    /// <summary>A jump while moving, and the fallback for the two below.</summary>
     [Export] public AnimationLibrary? Jump;
+    /// <summary>Optional. A jump from standing still (no direction held).</summary>
+    [Export] public AnimationLibrary? JumpUp;
+    /// <summary>Optional. The parkour vault over a waist-high obstacle (jump towards it). Timed
+    /// to the vault's air time when it plays.</summary>
+    [Export] public AnimationLibrary? Vault;
     [Export] public AnimationLibrary? LightAttack;
     [Export] public AnimationLibrary? HeavyAttack;
     /// <summary>The roll (Cmd / Ctrl). Timed to Tuning.DodgeDuration when it plays.</summary>
@@ -44,6 +50,14 @@ public partial class HumanoidAnimationSet : Resource
     /// slowed down to fit. Roughly windup + recovery from tuning.tres, so the swing lands with the hit.</summary>
     [Export] public float LightAttackDuration = 0.35f;
     [Export] public float HeavyAttackDuration = 0.9f;
+
+    [ExportGroup("Jump and vault playback")]
+    /// <summary>Where the standing jump starts, in seconds of the source clip: skip the crouch,
+    /// since the body has already left the ground when the clip starts.</summary>
+    [Export] public float JumpUpClipStart;
+    /// <summary>Slice of the vault clip to play (the jump itself, without the run-up).</summary>
+    [Export] public float VaultClipStart;
+    [Export] public float VaultClipEnd;
 
     [ExportGroup("Dodge, death and ability playback")]
     /// <summary>Slice of the roll clip to play (the roll itself, without the get-up).</summary>

@@ -20,6 +20,7 @@ Why: character owners control an ability's *shape* in code, and this file contro
 | Ability grammar limits | `MinAbilityTellTime`, `MaxControlEffectDuration`, `AbilityCooldownMin/Max` |
 | Networking | `ServerTickRateHz`, `MaxRewindTimeSeconds`, `InterpolationDelaySeconds`, `PingIntervalSeconds`, `Reconciliation*` |
 | Misc | `VoidCatchY` (rescue height), `HopEnabled`, `HopImpulse` |
+| Vault | `VaultReach`, `VaultMinHeight`, `VaultMaxHeight`, `VaultClearance`, `VaultSpeed` |
 | Per ability | `AbilityNumbers` dictionary: `"firepatch.damage_per_second"`, `"dropkick.damage_multiplier"` (× light damage), … |
 
 ## Changing a number

@@ -30,7 +30,11 @@ Every kill goes through `MatchServer.ServerRegisterKill(attacker, victim, method
   column of gold light rises from them into the sky (`effects/GoldenBeam`), visible to everyone
   from anywhere on the map, and "NAME TOOK THE GOLDEN KNIFE" is announced on screen in gold. The
   server sends the holder with `MatchServer.BroadcastKnifeHolder` (-1 when it's lost or a new
-  match starts); each client attaches the beam to that player.
+  match starts); each client attaches the beam to that player and swaps their knife for the
+  Golden Knife model (`Player.SetHoldsGoldenKnife`, back to their own knife when it's lost).
+  While it waits on the plinth, every client shows the same model spinning above it with a gold
+  light (`MatchServer.SetKnifeVisual`). The model is `assets/props/golden_knife/golden_knife.tscn`
+  (the "Buck Knife" FBX, with its PBR textures in `golden_knife_material.tres`).
 - **Kills and deaths** are counted per player for the match report.
 - Last Call shortens respawns to `RespawnTimeLastCall`.
 

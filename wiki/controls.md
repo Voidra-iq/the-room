@@ -13,7 +13,7 @@ them.
 | Heavy attack (lunge) | Right mouse | RT | R2 |
 | Roll (dodge) | Ctrl, or Cmd on a Mac | B | Circle |
 | Sprint (hold) | Shift | LT | L2 |
-| Jump | Space | A | Cross |
+| Jump (towards low cover: [vault](combat.md#sprint-jump-and-stamina)) | Space | A | Cross |
 | Ability | E | Y | Triangle |
 | Scoreboard (hold) | Tab | View | Create |
 | Pause menu | Esc | Menu | Options |

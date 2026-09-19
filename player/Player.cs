@@ -123,6 +123,12 @@ public partial class Player : CharacterBody3D
     private double _localBusyUntil;
     private bool _serverPendingSprint;
 
+    // Jumping towards waist-high cover vaults it: a higher jump sized to the obstacle, with the
+    // horizontal speed held until landing. Same place as the dodge: SimulateStep, so the server
+    // runs it for real and the owner predicts it.
+    private Vector3 _vaultVelocity;
+    private bool _vaulting;
+
     // Stamina: spent by sprinting and dodging, refills after a short pause. The server's value is
     // authoritative; the owner runs the same rules as a prediction (SimulateStep) and snaps to the
     // server's value when they drift apart.
@@ -392,10 +398,19 @@ public partial class Player : CharacterBody3D
     {
         var velocity = Velocity;
 
+        if (_vaulting && IsOnFloor() && velocity.Y <= 0f)
+            _vaulting = false; // landed, on the far side or on top
+
         if (!IsOnFloor())
-            velocity.Y -= (float)ProjectSettings.GetSetting("physics/3d/default_gravity") * (float)delta;
+            velocity.Y -= Gravity * (float)delta;
         else if (jump && TuningService.Instance.HopEnabled)
-            velocity.Y = TuningService.Instance.HopImpulse;
+        {
+            var wanted = worldDir.Normalized();
+            if (wanted.LengthSquared() > 0.0001f && FindVault(GetWorld3D().DirectSpaceState, GetRid(), GlobalPosition, wanted, TuningService.Instance, out var height))
+                velocity.Y = StartVault(wanted, height);
+            else
+                velocity.Y = TuningService.Instance.HopImpulse;
+        }
 
         if (_dodgeTimeRemaining > 0f)
         {
@@ -403,6 +418,11 @@ public partial class Player : CharacterBody3D
             velocity.X = _dodgeVelocity.X;
             velocity.Z = _dodgeVelocity.Z;
             _dodgeTimeRemaining -= (float)delta;
+        }
+        else if (_vaulting)
+        {
+            velocity.X = _vaultVelocity.X;
+            velocity.Z = _vaultVelocity.Z;
         }
         else
         {
@@ -441,8 +461,77 @@ public partial class Player : CharacterBody3D
             if (spawn is not null)
                 GlobalPosition = spawn.GlobalPosition;
             Velocity = Vector3.Zero;
+            _vaulting = false;
         }
     }
+
+    private static float Gravity => (float)ProjectSettings.GetSetting("physics/3d/default_gravity");
+
+    // Player.tscn's capsule, which the vault probes measure from.
+    private const float BodyHalfHeight = 0.9f;
+    private const float BodyRadius = 0.4f;
+
+    /// <summary>Is there cover to vault in front of a body centred at <paramref name="centre"/>,
+    /// moving along <paramref name="direction"/>? A knee-high probe finds something in the way, then
+    /// a probe down onto it measures its top: from VaultMinHeight to VaultMaxHeight above the feet
+    /// counts. Taller cover starts the downward probe inside itself and finds no top, so walls never
+    /// vault. Players are not cover. Static and query-only, so tests can run it on a bare world.</summary>
+    public static bool FindVault(PhysicsDirectSpaceState3D space, Rid self, Vector3 centre, Vector3 direction, Tuning tuning, out float height)
+    {
+        height = 0f;
+        var feet = centre + Vector3.Down * BodyHalfHeight;
+        var knee = feet + Vector3.Up * (tuning.VaultMinHeight - 0.1f);
+        var probe = PhysicsRayQueryParameters3D.Create(knee, knee + direction * (BodyRadius + tuning.VaultReach));
+        probe.Exclude = new Godot.Collections.Array<Rid> { self };
+        var hit = space.IntersectRay(probe);
+        if (hit.Count == 0 || hit["collider"].AsGodotObject() is CharacterBody3D)
+            return false;
+
+        // A little way into the obstacle, so thin cover (a barrier) still gets its top measured.
+        var over = hit["position"].AsVector3() + direction * 0.15f;
+        var top = PhysicsRayQueryParameters3D.Create(
+            new Vector3(over.X, feet.Y + tuning.VaultMaxHeight + 0.05f, over.Z),
+            new Vector3(over.X, feet.Y, over.Z));
+        top.Exclude = probe.Exclude;
+        var surface = space.IntersectRay(top);
+        if (surface.Count == 0 || surface["normal"].AsVector3().Y < 0.7f)
+            return false;
+
+        height = surface["position"].AsVector3().Y - feet.Y;
+        return height >= tuning.VaultMinHeight && height <= tuning.VaultMaxHeight;
+    }
+
+    /// <summary>Starts a vault over cover <paramref name="height"/> tall and returns the take-off
+    /// speed: just enough for the feet to clear it by VaultClearance. Runs wherever SimulateStep
+    /// does; the animation follows the dodge's pattern (the owner shows its own prediction, the
+    /// server cues everyone else).</summary>
+    private float StartVault(Vector3 direction, float height)
+    {
+        var tuning = TuningService.Instance;
+        var launch = Mathf.Sqrt(2f * Gravity * (height + tuning.VaultClearance));
+        _vaultVelocity = direction * tuning.VaultSpeed;
+        _vaulting = true;
+        GlobalRotation = new Vector3(GlobalRotation.X, YawFacing(direction), GlobalRotation.Z);
+
+        var airTime = 2f * launch / Gravity; // up and back down to the take-off height
+        if (_isServer)
+            Rpc(nameof(BroadcastVaultCue), airTime);
+        else
+            PlayVaultAnimation(airTime); // the owner's prediction, or practice
+        return launch;
+    }
+
+    [Rpc(MultiplayerApi.RpcMode.AnyPeer, CallLocal = true, TransferMode = MultiplayerPeer.TransferModeEnum.Unreliable)]
+    private void BroadcastVaultCue(float airTime)
+    {
+        if (_isServer || Multiplayer.GetRemoteSenderId() != 1)
+            return;
+        if (_isOwner && !_isBot)
+            return; // already playing: the owner predicted it on the key press
+        PlayVaultAnimation(airTime);
+    }
+
+    private void PlayVaultAnimation(float airTime) => _model?.PlayOneShot(CharacterModel.Clip.Vault, airTime);
 
     private void RunOfflinePhysics(double delta)
     {
@@ -451,6 +540,7 @@ public partial class Player : CharacterBody3D
         UpdateFacing(worldDir, (float)delta);
         SimulateStep(worldDir, delta, !GameMenu.IsOpen && Input.IsActionJustPressed("jump"), WantsSprint());
     }
+
 
     /// <summary>Drains stamina while sprinting and refills it otherwise. Returns whether the sprint
     /// actually happens: once empty, it stays off until stamina is back to SprintMinStamina, so it
@@ -495,8 +585,8 @@ public partial class Player : CharacterBody3D
     /// see the turn too.</summary>
     private void UpdateFacing(Vector3 worldDir, float delta)
     {
-        // Mid-roll the body keeps the direction the roll started in, whatever keys are held.
-        if (_dodgeTimeRemaining > 0f)
+        // Mid-roll (and mid-vault) the body keeps the direction it started in, whatever keys are held.
+        if (_dodgeTimeRemaining > 0f || _vaulting)
             return;
 
         float? target = null;
@@ -561,7 +651,7 @@ public partial class Player : CharacterBody3D
 
     private void RunServerPhysics(double delta)
     {
-        if (!IsDead && _dodgeTimeRemaining <= 0f) // mid-roll the facing is locked to the roll's direction
+        if (!IsDead && _dodgeTimeRemaining <= 0f && !_vaulting) // mid-roll (or vault) the facing is locked to its direction
             GlobalRotation = new Vector3(GlobalRotation.X, _serverPendingYaw, GlobalRotation.Z);
 
         if (!IsDead)
@@ -1195,6 +1285,7 @@ public partial class Player : CharacterBody3D
             return;
         _model?.Revive();
         _stamina = TuningService.Instance.MaxStamina;
+        _vaulting = false;
         _faceCentrePending = true;
     }
 
@@ -1321,11 +1412,11 @@ public partial class Player : CharacterBody3D
             ?? GD.Load<HumanoidAnimationSet>(string.IsNullOrEmpty(def.AnimationsPath) ? HumanoidAnimationSet.DefaultPath : def.AnimationsPath);
         if (modelScene is null || animations is null)
             return;
-        var heldProp = def.HeldProp ?? GD.Load<PackedScene>(CharacterModel.DefaultHeldPropPath);
+        _ownHeldProp = def.HeldProp ?? GD.Load<PackedScene>(CharacterModel.DefaultHeldPropPath);
 
         _model?.QueueFree();
         var capsuleHeight = GetNodeOrNull<CollisionShape3D>("CollisionShape3D")?.Shape is CapsuleShape3D capsule ? capsule.Height : 1.8f;
-        _model = CharacterModel.Create(modelScene, animations, capsuleHeight, heldProp);
+        _model = CharacterModel.Create(modelScene, animations, capsuleHeight, HeldPropScene());
         _model.Position = new Vector3(0f, -capsuleHeight / 2f, 0f); // the capsule is centred on the body origin
         AddChild(_model);
         _modelAnimations = animations;
@@ -1337,6 +1428,22 @@ public partial class Player : CharacterBody3D
         _lastVisualPosition = GlobalPosition;
     }
     private HumanoidAnimationSet? _modelAnimations;
+    private PackedScene? _ownHeldProp; // the character's knife, back in hand when the Golden Knife goes
+    private bool _holdsGoldenKnife;
+
+    /// <summary>Cosmetic: MatchServer calls this on every client when the Golden Knife changes
+    /// hands, so the holder visibly carries it. What the knife does is decided on the server
+    /// (MatchServer.IsGoldenKnifeHolder).</summary>
+    public void SetHoldsGoldenKnife(bool holds)
+    {
+        if (_holdsGoldenKnife == holds)
+            return;
+        _holdsGoldenKnife = holds;
+        _model?.SetHeldProp(HeldPropScene());
+    }
+
+    private PackedScene? HeldPropScene() =>
+        _holdsGoldenKnife ? GD.Load<PackedScene>(MatchServer.GoldenKnifePropPath) : _ownHeldProp;
 
     private void UpdateModelAnimation(float delta)
     {

@@ -21,6 +21,8 @@ Habits that win more fights. Read [Combat](combat.md) first.
 - **Break off after a hit.** Three seconds without being hit and you start
   [healing](combat.md#healing) one point a second.
 - Use the [arena's](arena.md) cover: the crate yard and barrier maze are good places to escape.
+- **Vault instead of going around.** Run at a barrier or crate and jump: you go over it, and
+  whoever is chasing you has to follow or lose you.
 
 ## Scoring
 

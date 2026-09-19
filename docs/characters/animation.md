@@ -20,15 +20,19 @@ model has.
 | File | Role |
 |---|---|
 | `assets/animations/humanoid/mixamo_bone_map.tres` | Mixamo → humanoid map, works for any Mixamo rig |
-| `assets/animations/humanoid/{run,jump,stab}.fbx` | clips, imported as **AnimationLibrary** |
+| `assets/animations/humanoid/*.fbx` | clips (run, jump, jump_up, jump_side, stab, dodge, death), imported as **AnimationLibrary** |
 | `assets/animations/humanoid/humanoid_default.tres` | `HumanoidAnimationSet`: which clip plays for which move, attack slices and durations |
 | `animation/CharacterModel.cs` | builds the playable clips and picks one each frame |
 
 ## What CharacterModel does with the clips
 
 - **Strips root motion.** Mixamo clips often walk the hips forward, but the server-authoritative
-  body moves the character, so the hips' X/Z are pinned to the first key. The jump also has its
-  upward lift clamped, since physics already raises the body.
+  body moves the character, so the hips' X/Z are pinned to the first key. The jumps and the vault
+  also have their upward lift clamped, since physics already raises the body.
+- **Picks the jump at take-off.** Leaving the ground at walking speed or less plays `JumpUp`,
+  faster plays `Jump`. The choice holds for the whole airtime, so air control can't swap clips
+  mid-jump. The vault is a one-shot cued like the roll (`Player.BroadcastVaultCue`), timed to
+  the vault's air time.
 - **Matches run speed to movement.** The run plays faster or slower with the player's speed,
   measured against how fast the clip was authored, so feet don't slide.
 - **Slices and time-scales attacks.** Each attack plays the slice `*ClipStart`–`*ClipEnd` of its
@@ -97,7 +101,9 @@ so it works on every retargeted model. It then instances the character's `HeldPr
 |---|---|---|---|
 | Idle | first frame of `stab.fbx` | — | loops |
 | Run | `run.fbx` (Mixamo "Fast Run") | whole | loops, speed-matched |
-| Jump | `jump.fbx` | whole | while airborne |
+| Jump (moving) | `jump.fbx` | whole | while airborne |
+| Jump (standing) | `jump_up.fbx` (Mixamo "Jumping Up") | from 0.45 s (skips the crouch) | while airborne |
+| Vault | `jump_side.fbx` (Mixamo "Jumping Side", a sideways vault) | 0.15–1.1 s (without the run-up) | the vault's air time |
 | Light attack | `stab.fbx` | 0.7–1.3 s | 0.35 s |
 | Heavy attack | `stab.fbx` | 0.2–2.1 s | 1.0 s |
 | Dodge (roll) | `dodge.fbx` | 0.25–1.25 s (the roll, without the get-up) | `Tuning.DodgeDuration` (0.55 s) |
@@ -106,5 +112,11 @@ so it works on every retargeted model. It then instances the character's `HeldPr
 
 The roll and death keep their **vertical** hip motion (the dip and the fall), and the drop kick
 keeps its jump. Only the horizontal drift is stripped.
+
+A character's own set (Zain's `zain_animations.tres`) is a **full copy** of the shared set plus
+its extras, not an overlay. A new shared clip has to be added to every such set as well;
+`tests/CharacterAnimationTests.cs` (`EveryCharacterSetHasEverySharedClip`) fails if one is missing.
+
+Preview another held prop with `make preview-animations PROP=res://assets/props/golden_knife/golden_knife.tscn CLOSEUP=1`.
 
 Missing today: a dedicated idle and a hit-react clip.

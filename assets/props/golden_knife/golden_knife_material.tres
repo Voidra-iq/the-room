@@ -1,0 +1,20 @@
+[gd_resource type="StandardMaterial3D" load_steps=5 format=3]
+
+[ext_resource type="Texture2D" path="res://assets/props/golden_knife/textures/T_GKnife_BC.png" id="1"]
+[ext_resource type="Texture2D" path="res://assets/props/golden_knife/textures/T_GKnife_M.png" id="2"]
+[ext_resource type="Texture2D" path="res://assets/props/golden_knife/textures/T_GKnife_R.png" id="3"]
+[ext_resource type="Texture2D" path="res://assets/props/golden_knife/textures/T_GKnife_N.png" id="4"]
+
+[resource]
+resource_name = "GoldenKnife"
+albedo_texture = ExtResource("1")
+metallic = 1.0
+metallic_texture = ExtResource("2")
+metallic_texture_channel = 0
+roughness_texture = ExtResource("3")
+roughness_texture_channel = 0
+emission_enabled = true
+emission_energy_multiplier = 0.35
+emission_texture = ExtResource("1")
+normal_enabled = true
+normal_texture = ExtResource("4")

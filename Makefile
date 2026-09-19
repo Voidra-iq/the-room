@@ -32,6 +32,8 @@ MODEL ?=
 MODEL_FLAG := $(if $(MODEL),--model=$(MODEL),)
 CLOSEUP ?=
 CLOSEUP_FLAG := $(if $(CLOSEUP),--closeup,)
+PROP ?=
+PROP_FLAG := $(if $(PROP),--prop=$(PROP),)
 
 # VPS deploy target (see plan/phase-1-network-spike.md). SSH host is an alias from ~/.ssh/config;
 # app runs isolated under its own system user/service, never as part of DEPLOY_HOST's other apps.
@@ -67,7 +69,7 @@ help:
 	@printf "  $(GREEN)%-14s$(RESET) %s\n" "run-bots" "Connect N headless wander/stab/ability bots to a server (see run-server). N=$(N) HOST=$(HOST) PORT=$(PORT) CHARACTER=$(CHARACTER)"
 	@printf "  $(GREEN)%-14s$(RESET) %s\n" "run-lobby" "Run the lobby locally; it starts rooms from this checkout ($(YELLOW)dotnet run services/lobby$(RESET)). Then: make run-client-menu"
 	@printf "  $(GREEN)%-14s$(RESET) %s\n" "run-client-menu" "Windowed client on the main menu, using the local lobby (--api=http://127.0.0.1:5310)"
-	@printf "  $(GREEN)%-14s$(RESET) %s\n" "preview-animations" "Side-view preview of a model playing every shared clip ($(YELLOW)tools/AnimationPreview.tscn$(RESET)). MODEL=res://...fbx (default Zain), CLOSEUP=1 for hands/knife"
+	@printf "  $(GREEN)%-14s$(RESET) %s\n" "preview-animations" "Side-view preview of a model playing every shared clip ($(YELLOW)tools/AnimationPreview.tscn$(RESET)). MODEL=res://...fbx (default Zain), CLOSEUP=1 for hands/knife, PROP=res://...tscn for another held prop"
 	@echo ""
 	@echo "$(BLUE)Quality$(RESET)"
 	@printf "  $(GREEN)%-14s$(RESET) %s\n" "clean" "Remove build/editor caches ($(YELLOW).godot/mono, bin, obj$(RESET))"
@@ -136,7 +138,7 @@ run-bots: build
 	wait
 
 preview-animations: build
-	@cd "$(ROOT)" && "$(GODOT)" --path . res://tools/AnimationPreview.tscn -- $(MODEL_FLAG) $(CLOSEUP_FLAG)
+	@cd "$(ROOT)" && "$(GODOT)" --path . res://tools/AnimationPreview.tscn -- $(MODEL_FLAG) $(CLOSEUP_FLAG) $(PROP_FLAG)
 
 # Local lobby: rooms run from this checkout. Ports 60410+ so it can't collide with run-server.
 LOBBY_URL := http://127.0.0.1:5310

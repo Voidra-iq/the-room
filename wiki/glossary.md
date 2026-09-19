@@ -19,6 +19,7 @@ Game terms, A to Z.
 | Stagger | A short stun from a heavy attack or a Drop Kick |
 | Stamina | The green bar: spent by sprinting and rolling |
 | Tell | The visible wind-up before an ability, so it can be answered |
+| Vault | Jumping over waist-high cover while running at it. See [Sprint, jump and stamina](combat.md#sprint-jump-and-stamina) |
 | Whiff | An attack that misses |
 
 ## See also

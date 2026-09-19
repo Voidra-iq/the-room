@@ -20,7 +20,8 @@ in the middle and a different kind of cover in each corner.
 ### Plaza
 
 The busiest spot: the [Golden Knife](match-rules.md#the-golden-knife) appears on the plinth
-here. The barrier ring gives just enough cover to break a chase.
+here. The barrier ring gives just enough cover to break a chase, and you can
+[vault](combat.md#sprint-jump-and-stamina) straight over it.
 
 ### Crate yard and barrier maze
 

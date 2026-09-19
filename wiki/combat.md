@@ -51,7 +51,11 @@ standing still).
 
 - **Sprint** (hold): 1.6× your normal speed (6 → 9.6 m/s). It drains stamina at 22 per
   second, so about 4.5 s from full.
-- **Jump**: a small hop, handy for getting onto ramps and over low cover.
+- **Jump**: standing still, it's a small hop straight up.
+- **Vault**: jump while running at waist-high cover (a barrier, a crate, a rock) and you vault
+  over it. It works on cover from **0.5 m to 1.5 m** tall that's right in front of you. Once
+  you leave the ground you can't steer until you land, and you can still be hit in the air.
+  Anything taller is a wall.
 - **Stamina** is the green bar under your health (100 max). It refills at 30 per second after
   0.8 s of not using it. If you run it dry, the bar turns amber and you can't sprint again
   until it's back to 15.

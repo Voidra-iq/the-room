@@ -32,7 +32,7 @@ shape code decisions:
 | `services/` | `lobby/` (ASP.NET rooms + match history API) and `Lobby.Tests/` | ✅ |
 | `maps/arena/` | The 60×60 m arena, **generated** by `tools/build_arena.gd` (CC0 props, box colliders, 16 spawns). Edit the generator, not the scene | |
 | `tuning/` | `tuning.tres` + `Tuning.cs`: **every gameplay number** | |
-| `assets/` | FBX models + textures, animations, props (knife), audio (humanoid retarget, see `docs/characters/`) | |
+| `assets/` | FBX models + textures, animations, props (knife, Golden Knife), audio (humanoid retarget, see `docs/characters/`) | |
 | `characters/` | Per-character spec sheets (`_template/`, placeholder examples) | |
 | `tests/` | GoDotTest suite (`make test`) | |
 | `tools/` | Dev tools (`AnimationPreview`, `bake_knife.gd`, `build_arena.gd`) | |

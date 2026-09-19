@@ -33,9 +33,11 @@ Ending a streak is announced too: "NAME COLLECTED NAME'S BOUNTY".
 ## The Golden Knife
 
 - It appears on the plinth in the middle of the [plaza](arena.md#plaza) **45 seconds** after
-  the match starts. The whole room is told when it does.
+  the match starts: a gold knife, spinning and glowing above the plinth. The whole room is told
+  when it does.
 - Walk onto the plinth to take it. Everyone is told who took it, and a **column of gold light**
-  rises from the holder into the sky, so the whole arena can see where they are.
+  rises from the holder into the sky, so the whole arena can see where they are. The holder
+  fights with the gold knife in their hand.
 - For **20 seconds**, every hit the holder lands kills in one blow, and every kill scores
   **double**.
 - The holder loses it when they die or the 20 seconds run out. It comes back **30 seconds**

@@ -7,9 +7,10 @@ namespace TheRoom.Tools;
 /// Side-view preview of a character model playing every clip in the shared animation set,
 /// through the same CharacterModel code the game uses. Use it to check a new model before
 /// registering it: `make preview-animations MODEL=res://assets/characters/&lt;name&gt;/&lt;name&gt;.fbx`.
-/// Cycles idle, run, jump, light, heavy, dodge, death (then revive) and the ability clip if the set
-/// has one. Flags: --closeup frames the hands, --set=res://…tres previews another animation set
-/// (Zain's drop kick), --only=dodge|death|ability|light|heavy repeats one clip (for picking slices).
+/// Cycles idle, jump_up, run, jump, vault, light, heavy, dodge, death (then revive) and the ability
+/// clip if the set has one. Flags: --closeup frames the hands, --set=res://…tres previews another
+/// animation set (Zain's drop kick), --prop=res://…tscn holds another prop (the Golden Knife),
+/// --only=vault|dodge|death|ability|light|heavy repeats one clip (for picking slices).
 /// </summary>
 public partial class AnimationPreview : Node3D
 {
@@ -27,6 +28,7 @@ public partial class AnimationPreview : Node3D
     {
         var modelPath = CharacterModel.DefaultModelPath;
         var setPath = HumanoidAnimationSet.DefaultPath;
+        var propPath = CharacterModel.DefaultHeldPropPath;
         var closeUp = false;
         string? only = null;
         foreach (var arg in OS.GetCmdlineUserArgs())
@@ -35,6 +37,8 @@ public partial class AnimationPreview : Node3D
                 modelPath = arg["--model=".Length..];
             if (arg.StartsWith("--set="))
                 setPath = arg["--set=".Length..];
+            if (arg.StartsWith("--prop="))
+                propPath = arg["--prop=".Length..];
             if (arg.StartsWith("--only="))
                 only = arg["--only=".Length..];
             closeUp |= arg == "--closeup"; // hands and the held prop, for seating the knife
@@ -58,7 +62,7 @@ public partial class AnimationPreview : Node3D
         AddChild(new MeshInstance3D { Mesh = new PlaneMesh { Size = new Vector2(6f, 6f) } });
 
         _set = GD.Load<HumanoidAnimationSet>(setPath);
-        _model = CharacterModel.Create(GD.Load<PackedScene>(modelPath), _set, Height, GD.Load<PackedScene>(CharacterModel.DefaultHeldPropPath));
+        _model = CharacterModel.Create(GD.Load<PackedScene>(modelPath), _set, Height, GD.Load<PackedScene>(propPath));
         AddChild(_model);
         GD.Print($"[Preview] {modelPath} with {setPath}");
 
@@ -66,8 +70,11 @@ public partial class AnimationPreview : Node3D
         var all = new[]
         {
             new Step("idle", 1.0f, null, Vector3.Zero),
+            // Standing still at take-off picks the standing jump, moving picks the running one.
+            new Step("jump_up", 0.8f, null, Vector3.Zero, OnFloor: false),
             new Step("run", 1.6f, null, new Vector3(0f, 0f, -6f)),
-            new Step("jump", 1.0f, null, Vector3.Zero, OnFloor: false),
+            new Step("jump", 1.0f, null, new Vector3(0f, 0f, -6f), OnFloor: false),
+            new Step("vault", 0.9f + 0.4f, () => _model.PlayOneShot(CharacterModel.Clip.Vault, 0.9f), Vector3.Zero),
             new Step("light", _set.LightAttackDuration + 0.4f, () => _model.PlayOneShot(CharacterModel.Clip.LightAttack, _set.LightAttackDuration), Vector3.Zero),
             new Step("heavy", _set.HeavyAttackDuration + 0.4f, () => _model.PlayOneShot(CharacterModel.Clip.HeavyAttack, _set.HeavyAttackDuration), Vector3.Zero),
             new Step("dodge", dodge + 0.4f, () => _model.PlayOneShot(CharacterModel.Clip.Dodge, dodge), Vector3.Zero),
@@ -77,7 +84,7 @@ public partial class AnimationPreview : Node3D
         };
         foreach (var step in all)
         {
-            if (step.Name == "ability" && _set.Ability is null)
+            if ((step.Name == "ability" && _set.Ability is null) || (step.Name == "vault" && _set.Vault is null))
                 continue;
             if (only is null || step.Name == only || (only == "death" && step.Name == "revive"))
                 _steps.Add(step);

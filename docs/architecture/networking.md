@@ -120,7 +120,7 @@ every peer.
 
 Anything the player sees about combat is cued by a server broadcast, never by a local key press:
 attack animations (`BroadcastAttackCue`), dodge rolls (`BroadcastDodgeCue`, except your own,
-which is predicted), death and revive (`BroadcastKill`, `BroadcastRevive`), the stab sound on a
+which is predicted), vaults (`BroadcastVaultCue`, the same way), death and revive (`BroadcastKill`, `BroadcastRevive`), the stab sound on a
 landed hit (`BroadcastHitSound`),
 spawn protection start and cancel (`BroadcastSpawnProtection`),
 ability tells, kills, death effects and announcements. A

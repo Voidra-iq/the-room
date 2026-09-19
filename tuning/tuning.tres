@@ -62,6 +62,11 @@ ReconciliationSmoothTime = 0.12
 VoidCatchY = -20.0
 HopEnabled = true
 HopImpulse = 4.0
+VaultReach = 0.8
+VaultMinHeight = 0.5
+VaultMaxHeight = 1.5
+VaultClearance = 0.4
+VaultSpeed = 5.0
 AbilityNumbers = {
 "firepatch.tell_seconds": 0.3,
 "firepatch.cooldown": 18.0,

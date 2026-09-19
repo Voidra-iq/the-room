@@ -20,6 +20,7 @@ asks to use a verb. The numbers below are the current values in `tuning/tuning.t
 | **Dodge (roll)** | Cmd (Mac) / Ctrl / B (Circle) | A 3.5 m roll in 0.55 s, in the direction you're moving when you press it (or facing, if standing still). The direction is **locked for the whole roll**: letting go of the keys or pressing another direction doesn't bend or stop it. **Strikes pass through you for the whole roll**: your hitbox is hidden, so a swing can still hit someone behind you. No cooldown: you can roll again as soon as a roll ends, as long as you have the stamina (30 each). Only from idle, so you can't roll out of your own attack's recovery. |
 | **Sprint** | Shift / LT (L2), held | Move speed ×1.6 (6 → 9.6 m/s) while held. Costs stamina. |
 | **Jump** | Space / A (Cross) | A small hop (about 0.8 m). Turn it off with `HopEnabled` for playtests. |
+| **Vault** | Jump while moving at cover | If `Player.FindVault` finds cover `VaultMinHeight`–`VaultMaxHeight` (0.5–1.5 m) tall within `VaultReach` (0.8 m) of the capsule, the jump becomes a vault: take-off speed just enough for the feet to clear the top by `VaultClearance` (0.4 m), and a horizontal `VaultSpeed` (5 m/s) held until landing (no steering, the body faces the vault). Players are never cover. Runs in `SimulateStep`, so the server decides it and the owner predicts it. |
 | **Ability** | E / Y (Triangle) | One per character, see [Abilities](abilities.md). Zain's Drop Kick hits for 2× a light hit, 7 s cooldown. |
 
 There is **no parry**: the dodge replaced it (decision D7 in `plan/main.md`).

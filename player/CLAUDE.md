@@ -28,6 +28,12 @@
   `worldDir` is world-space (camera-relative for humans). Verbs and abilities carry the yaw too. One-shot
   actions travel as counters, so a dropped packet doesn't eat them (see the jump). Verbs use the
   reliable `RequestVerb`.
+- **Vault**: a jump while moving at 0.5–1.5 m cover (`FindVault`, static so tests run it on a bare
+  world) launches over it and holds `_vaultVelocity` until landing. It lives in `SimulateStep`,
+  so the server decides it and the owner predicts it; the animation follows the dodge's cue
+  pattern (`BroadcastVaultCue`).
+- **Golden Knife holder:** `SetHoldsGoldenKnife` (called by `MatchServer` on every client) swaps
+  the held prop; `AttachModel` keeps it if the model is rebuilt.
 - **Dodge** is the one verb the owner predicts: `RequestVerbLocal` starts the roll locally
   (`StartDodge(predicted: true)`) and the server runs it for real. `IsDodging` hides the hitbox
   in `CombatServer`. There is no parry and no dash any more.

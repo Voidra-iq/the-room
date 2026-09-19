@@ -72,7 +72,8 @@ public partial class MatchServer : Node
     private double _knifeTimer;
     private long _knifeHolderId = -1;
     private static readonly Vector3 KnifeSpawnPosition = new(0, 1.5f, 0);
-    private CsgBox3D? _knifeVisual;
+    private Node3D? _knifeVisual;
+    public const string GoldenKnifePropPath = "res://assets/props/golden_knife/golden_knife.tscn";
 
     public bool IsGoldenKnifeHolder(long peerId) => _knifeState == KnifeState.Held && _knifeHolderId == peerId;
 
@@ -101,7 +102,7 @@ public partial class MatchServer : Node
     {
         _sessionActive = false;
         SetKnifeVisual(false);
-        SetHolderBeam(-1);
+        SetHolderVisuals(-1);
         ClearMatchState();
     }
 
@@ -121,7 +122,7 @@ public partial class MatchServer : Node
         _knifeState = KnifeState.Respawning;
         _knifeTimer = TuningService.Instance.GoldenKnifeFirstSpawn;
         _knifeHolderId = -1;
-        SetHolderBeam(-1);
+        SetHolderVisuals(-1);
     }
 
     private double _clockSyncTimer;
@@ -423,10 +424,10 @@ public partial class MatchServer : Node
         Rpc(nameof(BroadcastAnnouncement), "THE GOLDEN KNIFE WAS LOST");
     }
 
-    /// <summary>Cosmetic-only pickup marker (grey-box: a glowing gold box) — spawned/removed on
-    /// every peer independently in reaction to the announcement broadcast, same pattern as
-    /// Player.SpawnDeathEffect. No collision, purely visual; the actual pickup check above is
-    /// a plain distance check run only where _isAuthoritative is true.</summary>
+    /// <summary>Cosmetic-only pickup marker: the Golden Knife model spinning above the plinth,
+    /// spawned/removed on every peer independently in reaction to the announcement broadcast, same
+    /// pattern as Player.SpawnDeathEffect. No collision, purely visual; the actual pickup check above
+    /// is a plain distance check run only where _isAuthoritative is true.</summary>
     private void SetKnifeVisual(bool visible)
     {
         if (visible)
@@ -436,19 +437,21 @@ public partial class MatchServer : Node
 
             var tree = (SceneTree)Engine.GetMainLoop();
             var root = tree.CurrentScene;
-            if (root is null)
+            if (root is null || DisplayServer.GetName() == "headless")
                 return;
 
-            var box = new CsgBox3D { Size = new Vector3(0.3f, 0.3f, 1.0f), Position = KnifeSpawnPosition };
-            var mat = new StandardMaterial3D
-            {
-                AlbedoColor = new Color(1f, 0.85f, 0.1f),
-                EmissionEnabled = true,
-                Emission = new Color(1f, 0.85f, 0.1f),
-            };
-            box.MaterialOverride = mat;
-            root.AddChild(box);
-            _knifeVisual = box;
+            // The prop is posed for a hand (tilted 50° forward, see golden_knife.tscn); tilt it
+            // back so the blade stands straight up, and scale it up to read from across the arena.
+            var pivot = new Node3D { Name = "GoldenKnifePickup", Position = KnifeSpawnPosition + Vector3.Down * 0.15f };
+            var knife = GD.Load<PackedScene>(GoldenKnifePropPath).Instantiate<Node3D>();
+            knife.Rotation = new Vector3(Mathf.DegToRad(-50f), 0f, 0f);
+            knife.Scale = Vector3.One * 2.5f;
+            pivot.AddChild(knife);
+            pivot.AddChild(new OmniLight3D { Position = Vector3.Up * 0.4f, LightColor = new Color(1f, 0.8f, 0.3f), LightEnergy = 1.5f, OmniRange = 4f });
+            root.AddChild(pivot);
+            var spin = pivot.CreateTween().SetLoops();
+            spin.TweenProperty(pivot, "rotation:y", Mathf.Tau, 3.0).From(0f);
+            _knifeVisual = pivot;
         }
         else
         {
@@ -478,29 +481,35 @@ public partial class MatchServer : Node
     }
 
     /// <summary>Who holds the Golden Knife (-1: nobody). Every client puts the gold beam
-    /// (effects/GoldenBeam) on that player, so the whole room can see the holder from anywhere.</summary>
+    /// (effects/GoldenBeam) on that player, so the whole room can see the holder from anywhere, and
+    /// swaps their knife for the Golden Knife.</summary>
     [Rpc(MultiplayerApi.RpcMode.AnyPeer, CallLocal = true, TransferMode = MultiplayerPeer.TransferModeEnum.Reliable)]
     private void BroadcastKnifeHolder(long holderId)
     {
         if (!_isAuthoritative && Multiplayer.GetRemoteSenderId() != 1)
             return;
-        SetHolderBeam(holderId);
+        SetHolderVisuals(holderId);
     }
 
     private Node3D? _holderBeam;
+    private long _visualHolderId = -1;
 
-    private void SetHolderBeam(long holderId)
+    private void SetHolderVisuals(long holderId)
     {
         if (_holderBeam is not null && IsInstanceValid(_holderBeam))
             _holderBeam.QueueFree();
         _holderBeam = null;
+        var players = ((SceneTree)Engine.GetMainLoop()).CurrentScene?.GetNodeOrNull("PlayersContainer");
+        if (players?.GetNodeOrNull<Player>(_visualHolderId.ToString()) is { } previous)
+            previous.SetHoldsGoldenKnife(false);
+        _visualHolderId = holderId;
         if (holderId < 0 || DisplayServer.GetName() == "headless")
             return;
-        var root = ((SceneTree)Engine.GetMainLoop()).CurrentScene;
-        if (root?.GetNodeOrNull<Node3D>($"PlayersContainer/{holderId}") is not { } holder)
+        if (players?.GetNodeOrNull<Player>(holderId.ToString()) is not { } holder)
             return;
         _holderBeam = new GoldenBeam { Name = "GoldenBeam" };
         holder.AddChild(_holderBeam);
+        holder.SetHoldsGoldenKnife(true);
     }
 
     [Rpc(MultiplayerApi.RpcMode.AnyPeer, CallLocal = true, TransferMode = MultiplayerPeer.TransferModeEnum.Unreliable)]

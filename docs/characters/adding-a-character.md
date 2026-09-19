@@ -68,7 +68,7 @@ character using this model gets it:
 make preview-animations MODEL=res://assets/characters/<id>/<id>.fbx
 ```
 
-It shows a side view cycling idle → run → jump → light → heavy. Check that the model:
+It shows a side view cycling idle → standing jump → run → jump → vault → light → heavy. Check that the model:
 
 - stands on the floor;
 - faces the way it runs;

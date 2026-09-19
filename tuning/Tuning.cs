@@ -103,6 +103,13 @@ public partial class Tuning : Resource
     [Export] public bool HopEnabled = false; // toggle here for the A/B test; playtest decides, not this default
     [Export] public float HopImpulse = 4.0f;
 
+    [ExportGroup("Movement — vault (parkour over waist-high cover)")]
+    [Export] public float VaultReach = 0.8f;       // how far in front of the capsule an obstacle can start
+    [Export] public float VaultMinHeight = 0.5f;   // lower than this is a normal hop (curbs, ramps)
+    [Export] public float VaultMaxHeight = 1.5f;   // taller than this is a wall
+    [Export] public float VaultClearance = 0.4f;   // how far above the obstacle's top the feet peak
+    [Export] public float VaultSpeed = 5.0f;       // horizontal speed, held from take-off to landing
+
     /// <summary>
     /// Per-ability numbers, keyed "&lt;abilityId&gt;.&lt;paramName&gt;" (e.g. "dropkick.range",
     /// "firepatch.damage_per_tick"). CHARACTER-SPEC.md Part 4: ability owners control an

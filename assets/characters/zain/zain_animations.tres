@@ -1,4 +1,4 @@
-[gd_resource type="Resource" script_class="HumanoidAnimationSet" load_steps=8 format=3]
+[gd_resource type="Resource" script_class="HumanoidAnimationSet" load_steps=10 format=3]
 
 [ext_resource type="Script" path="res://animation/HumanoidAnimationSet.cs" id="1"]
 [ext_resource type="AnimationLibrary" path="res://assets/animations/humanoid/run.fbx" id="2"]
@@ -7,11 +7,15 @@
 [ext_resource type="AnimationLibrary" path="res://assets/animations/humanoid/dodge.fbx" id="5"]
 [ext_resource type="AnimationLibrary" path="res://assets/animations/humanoid/death.fbx" id="6"]
 [ext_resource type="AnimationLibrary" path="res://assets/animations/humanoid/dropkick.fbx" id="7"]
+[ext_resource type="AnimationLibrary" path="res://assets/animations/humanoid/jump_up.fbx" id="8"]
+[ext_resource type="AnimationLibrary" path="res://assets/animations/humanoid/jump_side.fbx" id="9"]
 
 [resource]
 script = ExtResource("1")
 Run = ExtResource("2")
 Jump = ExtResource("3")
+JumpUp = ExtResource("8")
+Vault = ExtResource("9")
 LightAttack = ExtResource("4")
 HeavyAttack = ExtResource("4")
 Dodge = ExtResource("5")
@@ -23,6 +27,9 @@ LightAttackDuration = 0.35
 HeavyAttackClipStart = 0.2
 HeavyAttackClipEnd = 2.1
 HeavyAttackDuration = 1.0
+JumpUpClipStart = 0.45
+VaultClipStart = 0.15
+VaultClipEnd = 1.1
 DeathDuration = 1.3
 DodgeClipStart = 0.25
 DodgeClipEnd = 1.25

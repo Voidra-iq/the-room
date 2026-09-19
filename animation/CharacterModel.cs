@@ -18,13 +18,15 @@ public partial class CharacterModel : Node3D
     // Standard humanoid name after retargeting, so a prop attaches the same way on every model.
     private const string HandBone = "RightHand";
 
-    public enum Clip { Idle, Run, Jump, LightAttack, HeavyAttack, Dodge, Death, Ability }
+    public enum Clip { Idle, Run, Jump, JumpUp, Vault, LightAttack, HeavyAttack, Dodge, Death, Ability }
 
     private static readonly Dictionary<Clip, StringName> ClipNames = new()
     {
         [Clip.Idle] = "idle",
         [Clip.Run] = "run",
         [Clip.Jump] = "jump",
+        [Clip.JumpUp] = "jump_up",
+        [Clip.Vault] = "vault",
         [Clip.LightAttack] = "light_attack",
         [Clip.HeavyAttack] = "heavy_attack",
         [Clip.Dodge] = "dodge",
@@ -42,6 +44,10 @@ public partial class CharacterModel : Node3D
     private float _oneShotRemaining;
     private bool _dead; // holding the death pose until Revive()
     private float _authoredRunSpeed = 1f; // m/s the run clip's feet were animated for, at this model's scale
+    private bool _wasOnFloor = true;
+    private Clip _airClip = Clip.Jump; // picked at take-off and kept for the whole airtime
+    private Skeleton3D? _skeleton;
+    private float _scale = 1f;
 
     /// <summary>One duplicated material per mesh surface. Player tints these with the character
     /// colour and flashes them for tells, like it did with the grey-box capsule.</summary>
@@ -93,17 +99,36 @@ public partial class CharacterModel : Node3D
         root.AddChild(model._animator);
         model._animator.AddAnimationLibrary("", model.BuildLibrary(set, skeleton, scale));
 
-        if (heldProp is not null && skeleton is not null && skeleton.FindBone(HandBone) >= 0)
-        {
-            var attachment = new BoneAttachment3D { Name = "RightHandAttachment", BoneName = HandBone };
-            skeleton.AddChild(attachment);
-            var prop = heldProp.Instantiate<Node3D>();
-            // The model root is scaled up to the capsule height; undo it so the prop keeps its real size.
-            prop.Scale = Vector3.One / scale;
-            attachment.AddChild(prop);
-            model.HeldProp = prop;
-        }
+        model._skeleton = skeleton;
+        model._scale = scale;
+        model.SetHeldProp(heldProp);
         return model;
+    }
+
+    /// <summary>Puts <paramref name="heldProp"/> in the right hand, replacing whatever was there
+    /// (null: empty hand). Player swaps the knife for the Golden Knife while holding it.</summary>
+    public void SetHeldProp(PackedScene? heldProp)
+    {
+        if (HeldProp is not null)
+        {
+            HeldProp.GetParent().RemoveChild(HeldProp);
+            HeldProp.QueueFree();
+            HeldProp = null;
+        }
+        if (heldProp is null || _skeleton is null || _skeleton.FindBone(HandBone) < 0)
+            return;
+
+        var attachment = _skeleton.GetNodeOrNull<BoneAttachment3D>("RightHandAttachment");
+        if (attachment is null)
+        {
+            attachment = new BoneAttachment3D { Name = "RightHandAttachment", BoneName = HandBone };
+            _skeleton.AddChild(attachment);
+        }
+        var prop = heldProp.Instantiate<Node3D>();
+        // The model root is scaled up to the capsule height; undo it so the prop keeps its real size.
+        prop.Scale = Vector3.One / _scale;
+        attachment.AddChild(prop);
+        HeldProp = prop;
     }
 
     public Godot.Animation? GetClip(Clip clip) =>
@@ -116,6 +141,13 @@ public partial class CharacterModel : Node3D
         if (_dead)
             return;
 
+        var flatSpeed = new Vector2(velocity.X, velocity.Z).Length();
+        // Standing jump or moving jump is decided at take-off: air control can change the speed
+        // mid-air, and switching clips there would pop.
+        if (_wasOnFloor && !onFloor)
+            _airClip = flatSpeed <= 0.5f && _animator.HasAnimation(ClipNames[Clip.JumpUp]) ? Clip.JumpUp : Clip.Jump;
+        _wasOnFloor = onFloor;
+
         if (_oneShotRemaining > 0f)
         {
             _oneShotRemaining -= delta;
@@ -123,10 +155,9 @@ public partial class CharacterModel : Node3D
                 return;
         }
 
-        var flatSpeed = new Vector2(velocity.X, velocity.Z).Length();
         if (!onFloor)
         {
-            Play(Clip.Jump);
+            Play(_airClip);
         }
         else if (flatSpeed > 0.5f)
         {
@@ -209,6 +240,16 @@ public partial class CharacterModel : Node3D
             library.AddAnimation(ClipNames[Clip.Jump], clip);
         }
 
+        var jumpUp = HumanoidAnimationSet.FirstClip(set.JumpUp);
+        if (jumpUp is not null)
+        {
+            var clip = Slice(StripRootMotion(jumpUp, clampRise: true, out _), set.JumpUpClipStart, (float)jumpUp.Length);
+            clip.LoopMode = Godot.Animation.LoopModeEnum.None;
+            library.AddAnimation(ClipNames[Clip.JumpUp], clip);
+        }
+        // A one-shot like the roll, but the body's vault already lifts it over the obstacle.
+        AddOneShot(library, Clip.Vault, set.Vault, set.VaultClipStart, set.VaultClipEnd, clampRise: true);
+
         AddOneShot(library, Clip.LightAttack, set.LightAttack, set.LightAttackClipStart, set.LightAttackClipEnd);
         AddOneShot(library, Clip.HeavyAttack, set.HeavyAttack, set.HeavyAttackClipStart, set.HeavyAttackClipEnd);
         // The roll dips and the death falls: their vertical hip motion is kept, only the
@@ -232,14 +273,14 @@ public partial class CharacterModel : Node3D
         return library;
     }
 
-    private static void AddOneShot(AnimationLibrary library, Clip clip, AnimationLibrary? source, float start, float end)
+    private static void AddOneShot(AnimationLibrary library, Clip clip, AnimationLibrary? source, float start, float end, bool clampRise = false)
     {
         var animation = HumanoidAnimationSet.FirstClip(source);
         if (animation is null)
             return;
 
         var sliceEnd = end > start ? Mathf.Min(end, (float)animation.Length) : (float)animation.Length;
-        var sliced = Slice(StripRootMotion(animation, clampRise: false, out _), start, sliceEnd);
+        var sliced = Slice(StripRootMotion(animation, clampRise, out _), start, sliceEnd);
         sliced.LoopMode = Godot.Animation.LoopModeEnum.None;
         library.AddAnimation(ClipNames[clip], sliced);
     }
